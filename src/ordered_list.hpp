@@ -28,6 +28,25 @@ OrderedList<Value, Key, Node>::OrderedList()
 
 
     // TODO: !!! Implement destructor correctly !!!
+template <class Value, class Key, class Node>
+OrderedList<Value, Key, Node>::~OrderedList()
+{
+    Node* iterNode = _preHead->next;
+    if(iterNode != _preHead)
+    {
+        Node *bufNode;
+        while (iterNode->next != _preHead)
+        {
+            bufNode = iterNode;
+            iterNode = iterNode->next;
+            delete bufNode;
+        }
+        delete iterNode;
+        delete _preHead;
+    } else{
+        delete _preHead;
+    }
+}
 
 //-----------------------------------------------------------------------------
 
