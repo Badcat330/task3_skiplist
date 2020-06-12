@@ -12,6 +12,7 @@
 // !!! DO NOT include skip_list.h here, 'cause it leads to circular refs. !!!
 
 #include <cstdlib>
+#include <vector>
 
 //==============================================================================
 // class NodeSkipList
@@ -70,7 +71,151 @@ SkipList<Value, Key, numLevels>::SkipList(double probability)
         Base::_preHead->nextJump[i] = Base::_preHead;
 
     Base::_preHead->levelHighest = numLevels - 1;
+    srand(time(0));
 }
 
+template <class Value, class Key, int numLevels>
+void SkipList<Value, Key, numLevels>::insert(const Value &val, const Key &key)
+{
+    std::vector<Node*> nearestNods;
+    Node* bufNode = Base::_preHead;
+    for (int iter = bufNode->levelHighest ; iter > -1; iter--)
+    {
+        while (bufNode->nextJump[iter] != Base::_preHead && bufNode->nextJump[iter]->key <= key)
+        {
+            bufNode = bufNode->nextJump[iter];
+        }
+        nearestNods.insert(nearestNods.begin(), bufNode);
+    }
 
-    // TODO: !!! One need to implement all declared methods !!!
+    while (bufNode->next != Base::_preHead && bufNode->next->key <= key)
+    {
+        bufNode = bufNode->next;
+    }
+
+    Node* newNode = new Node(key, val);
+    newNode->next = bufNode->next;
+    bufNode->next = newNode;
+
+    double randDouble = (rand() * 1.0 / RAND_MAX);
+    int layerCount = 0;
+    while (randDouble < _probability && layerCount < nearestNods.size()){
+        newNode->nextJump[layerCount] = nearestNods[layerCount]->nextJump[layerCount];
+        nearestNods[layerCount]->nextJump[layerCount] = newNode;
+        layerCount++;
+        randDouble = (rand() * 1.0 / RAND_MAX);
+    }
+    newNode->levelHighest = layerCount - 1;
+    nearestNods.clear();
+}
+
+template <class Value, class Key, int numLevels>
+void SkipList<Value, Key, numLevels>::removeNext(SkipList<Value, Key, numLevels>::Node *nodeBefore)
+{
+    if(nodeBefore == nullptr || nodeBefore->next == Base::_preHead)
+    {
+        throw std::invalid_argument("You can't delete preHead");
+    }
+
+    Node* nearestNode = Base::_preHead;
+
+    for (int iter = nearestNode->levelHighest ; iter > -1; iter--)
+    {
+        while (nearestNode->nextJump[iter] != Base::_preHead && nearestNode->nextJump[iter]->key < nodeBefore->next->key)
+        {
+            nearestNode = nearestNode->nextJump[iter];
+        }
+        Node* nearestBufNode = nearestNode;
+        while (nearestBufNode->nextJump[iter] != Base::_preHead && nearestBufNode->nextJump[iter]->key == nodeBefore->next->key)
+        {
+
+            if (nearestBufNode->nextJump[iter] == nodeBefore->next && nearestBufNode->nextJump[iter] != Base::_preHead)
+            {
+                nearestBufNode->nextJump[iter] = nearestBufNode->next->nextJump[iter];
+            }
+            nearestBufNode = nearestBufNode->nextJump[iter];
+        }
+    }
+
+    while (nearestNode->next->key < nodeBefore->next->key && nearestNode->next != Base::_preHead)
+    {
+        nearestNode = nearestNode->next;
+    }
+
+    while (nearestNode->next->key == nodeBefore->next->key && nearestNode->next != Base::_preHead)
+    {
+        if (nearestNode->next == nodeBefore->next)
+        {
+            Node *bufNode = nodeBefore->next;
+            nearestNode->next = nodeBefore->next->next;
+            delete bufNode;
+            return;
+        }
+        nearestNode = nearestNode->next;
+    }
+
+    throw std::invalid_argument("No such node was found");
+
+}
+
+template<class Value, class Key, int numLevels>
+NodeSkipList<Value,Key, numLevels>* SkipList<Value, Key, numLevels>::findLastLessThan(const Key &key) const
+{
+    Node* nearestNode = Base::_preHead;
+
+    if(Base::_preHead->next == Base::_preHead || Base::_preHead->next->key >= key)
+    {
+        return Base::_preHead;
+    }
+
+    for (int iter = nearestNode->levelHighest ; iter > -1; iter--)
+    {
+        while (nearestNode->nextJump[iter] != Base::_preHead && nearestNode->nextJump[iter]->key < key)
+        {
+            nearestNode = nearestNode->nextJump[iter];
+        }
+    }
+
+    while (nearestNode->next->key < key && nearestNode != Base::_preHead)
+    {
+        nearestNode = nearestNode->next;
+    }
+
+    return nearestNode;
+}
+
+template<class Value, class Key, int numLevels>
+NodeSkipList<Value,Key, numLevels>* SkipList<Value, Key, numLevels>::findFirst(const Key &key) const
+{
+    Node* nearestNode = Base::_preHead;
+
+    for (int iter = nearestNode->levelHighest ; iter > -1; iter--)
+    {
+        while (nearestNode->nextJump[iter] != Base::_preHead && nearestNode->nextJump[iter]->key < key)
+        {
+            nearestNode = nearestNode->nextJump[iter];
+        }
+
+        if(nearestNode->nextJump[iter]->key == key)
+        {
+            return nearestNode->nextJump[iter];
+        }
+    }
+
+    while (nearestNode->next->key < key && nearestNode->next != Base::_preHead){
+        nearestNode = nearestNode->next;
+    }
+
+    if(nearestNode->next->key == key)
+    {
+        return nearestNode -> next;
+    } else{
+        return nullptr;
+    }
+}
+
+template<class Value, class Key, int numLevels>
+SkipList<Value, Key, numLevels>::~SkipList()
+{
+    // All deleting in ~OrderedList
+}
